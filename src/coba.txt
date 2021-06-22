@@ -1,0 +1,27 @@
+#include <Arduino.h>
+
+const int channel1 = 4;
+const int channel1 = 5;
+const int channel1 = 25;
+const int channel1 = 26;
+
+void setup() {
+  pinMode(channel1, OUTPUT);    // sets the digital pin 13 as output
+  pinMode(channel2, OUTPUT);
+  pinMode(channel3, OUTPUT);
+  pinMode(channel4, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(channel1, HIGH);
+  digitalWrite(channel2, HIGH);
+  digitalWrite(channel3, HIGH);
+  digitalWrite(channel4, HIGH);
+  delay(1000);
+
+  digitalWrite(channel1, LOW);
+  digitalWrite(channel2, LOW);
+  digitalWrite(channel3, LOW);
+  digitalWrite(channel4, LOW);
+  delay(1000);
+}

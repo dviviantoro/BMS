@@ -1,0 +1,164 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+#include <Adafruit_AHTX0.h>
+
+Adafruit_AHTX0 aht;
+
+Adafruit_INA219 ina219_AlwaysON;      //MCU
+//Adafruit_INA219 ina219_12VBus(0x45);  //display, fan
+//Adafruit_INA219 ina219_5VBus(0x44);   //regulator dari 12V ke 5V, raspberry
+
+const int relay = A2;
+const int fan = 9;
+const int limitSwitch = A0;
+int switchState = 0;
+
+const int chargeStatePin = A6;
+int chargeState = 0;
+
+void setup() {
+  Serial.begin(115200);
+
+  uint32_t currentFrequency;
+  ina219_AlwaysON.begin();
+  //ina219_12VBus.begin();
+  //ina219_5VBus.begin();
+  ina219_AlwaysON.setCalibration_32V_2A();
+  //ina219_12VBus.setCalibration_32V_2A();
+  //ina219_5VBus.setCalibration_32V_2A();
+
+  aht.begin();
+
+  pinMode(relay, OUTPUT);
+  pinMode(fan, OUTPUT);
+  digitalWrite(fan, LOW);
+}
+
+void loop() {
+  switchState = analogRead(limitSwitch);
+  if (switchState > 500) {
+    digitalWrite(relay, LOW);
+    digitalWrite(fan, LOW);
+  } else {
+    digitalWrite(relay, HIGH);
+    digitalWrite(fan, HIGH);
+  }
+
+  float shuntvoltageAlwaysON = 0;
+  float busvoltageAlwaysON = 0;
+  float currentAlwaysON = 0;
+  float loadvoltageAlwaysON = 0;
+  float powerAlwaysON = 0;
+
+  float shuntvoltage12VBus = 0;
+  float busvoltage12VBus = 0;
+  float current12VBus = 0;
+  float loadvoltage12VBus = 0;
+  float power12VBus = 0;
+
+  float shuntvoltage5VBus = 0;
+  float busvoltage5VBus = 0;
+  float current5VBus = 0;
+  float loadvoltage5VBus = 0;
+  float power5VBus = 0;
+
+  float totalPower = 0;
+
+  shuntvoltageAlwaysON = ina219_AlwaysON.getShuntVoltage_mV();
+  busvoltageAlwaysON = ina219_AlwaysON.getBusVoltage_V();
+  currentAlwaysON = ina219_AlwaysON.getCurrent_mA();
+  powerAlwaysON = ina219_AlwaysON.getPower_mW();
+  loadvoltageAlwaysON = busvoltageAlwaysON + (shuntvoltageAlwaysON / 1000);
+  
+  /*
+  shuntvoltage12VBus = ina219_12VBus.getShuntVoltage_mV();
+  busvoltage12VBus = ina219_12VBus.getBusVoltage_V();
+  current12VBus = ina219_12VBus.getCurrent_mA();
+  power12VBus = ina219_12VBus.getPower_mW();
+  loadvoltage12VBus = busvoltage12VBus + (shuntvoltage12VBus / 1000);
+
+  shuntvoltage5VBus = ina219_5VBus.getShuntVoltage_mV();
+  busvoltage5VBus = ina219_5VBus.getBusVoltage_V();
+  current5VBus = ina219_5VBus.getCurrent_mA();
+  power5VBus = ina219_5VBus.getPower_mW();
+  loadvoltage5VBus = busvoltage5VBus + (shuntvoltage5VBus / 1000);
+  */
+
+  sensors_event_t humidity, temp;
+  
+  aht.getEvent(&humidity, &temp);
+  Serial.print("Temperature: ");
+  Serial.print(temp.temperature);
+  Serial.println(" degrees C");
+
+  Serial.print("Humidity: ");
+  Serial.print(humidity.relative_humidity);
+  Serial.println("% rH");
+  Serial.println();
+
+  if (humidity.relative_humidity > 80) {
+    //digitalWrite(fan, HIGH);
+    //digitalWrite(relay, HIGH);
+  } else {
+    //digitalWrite(fan, LOW);
+    //digitalWrite(relay, LOW);
+  }
+
+  Serial.println("Always ON Bus (ProMini & Fan): ");
+  Serial.print(loadvoltageAlwaysON);
+  Serial.println(" V");
+  Serial.print(currentAlwaysON);
+  Serial.println(" mA");
+  Serial.print(powerAlwaysON);
+  Serial.println(" mW");
+  Serial.println();
+
+  /*
+  Serial.println("12V Bus (12VBusplay): ");
+  Serial.print(loadvoltage12VBus);
+  Serial.println(" V");
+  Serial.print(current12VBus);
+  Serial.println(" mA");
+  Serial.print(power12VBus);
+  Serial.println(" mW");
+  Serial.println();
+  
+  Serial.println("5VBus Bus (USB sockets): ");
+  Serial.print(loadvoltage5VBus);
+  Serial.println(" V");
+  Serial.print(current5VBus);
+  Serial.println(" mA");
+  Serial.print(power5VBus);
+  Serial.println(" mW");
+  Serial.println();
+
+  totalPower = powerAlwaysON + power12VBus + power5VBus;
+  Serial.print("Total Power: ");
+  Serial.print(totalPower);
+  Serial.println(" mW");
+  Serial.println();
+  */
+  
+  chargeState = analogRead(chargeStatePin);
+  Serial.print("Battery Status: ");
+  if (chargeState > 100) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.print("Charging || ");
+    Serial.println(chargeState);
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.print("Used || ");
+    Serial.println(chargeState);
+  }
+
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(500);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(500);
+
+
+  Serial.println("|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||");
+
+  //delay(1000);
+}

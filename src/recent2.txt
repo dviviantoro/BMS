@@ -1,16 +1,17 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_INA219.h>
-#include <Adafruit_AHTX0.h>
+//#include <Adafruit_AHTX0.h>
 
-Adafruit_AHTX0 aht;
+//Adafruit_AHTX0 aht;
 
 Adafruit_INA219 ina219_Bat;
-Adafruit_INA219 ina219_Dis(0x41);
-Adafruit_INA219 ina219_Rasp(0x44);
-Adafruit_INA219 ina219_5V(0x45);
+//Adafruit_INA219 ina219_Dis(0x41);
+//Adafruit_INA219 ina219_Rasp(0x44);
+//Adafruit_INA219 ina219_5V(0x45);
 
 const int relay = 10;
+const int fan = 7;
 const int limitSwitch = 11;
 int switchState = 0;
 
@@ -19,14 +20,21 @@ int chargeState = 0;
 
 void setup() {
   Serial.begin(115200);
+
+  uint32_t currentFrequency;
   ina219_Bat.begin();
-  ina219_Dis.begin();
-  ina219_Rasp.begin();
-  ina219_5V.begin();
-  aht.begin();
+  //ina219_Dis.begin();
+  //ina219_Rasp.begin();
+  //ina219_5V.begin();
+  //aht.begin();
 
   pinMode(limitSwitch, INPUT);
   pinMode(relay, OUTPUT);
+  pinMode(fan, OUTPUT);
+  digitalWrite(fan, LOW);
+
+  //ina219_Dis.setCalibration_32V_2A();
+  //ina219_5V.setCalibration_32V_2A();
 
   // By default the initialization will use the largest range (32V, 2A).  
   
@@ -34,17 +42,17 @@ void setup() {
   //ina219.setCalibration_32V_1A();
   
   // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
-  ina219_Bat.setCalibration_16V_400mA();
+  //ina219_Bat.setCalibration_16V_400mA();
 }
 
 void loop() {
-  chargeState = analogRead(chargeStatePin);
-
   switchState = digitalRead(limitSwitch);
   if (switchState == HIGH) {
-    digitalWrite(relay, HIGH);
-  } else {
     digitalWrite(relay, LOW);
+    //digitalWrite(fan, LOW);
+  } else {
+    digitalWrite(relay, HIGH);
+    //digitalWrite(fan, HIGH);
   }
 
   float shuntvoltageBat = 0;
@@ -59,11 +67,13 @@ void loop() {
   float loadvoltageDis = 0;
   float powerDis = 0;
 
+  /*
   float shuntvoltageRasp = 0;
   float busvoltageRasp = 0;
   float currentRasp = 0;
   float loadvoltageRasp = 0;
   float powerRasp = 0;
+  */
 
   float shuntvoltage5V = 0;
   float busvoltage5V = 0;
@@ -71,23 +81,28 @@ void loop() {
   float loadvoltage5V = 0;
   float power5V = 0;
 
+  float totalPower = 0;
+
   shuntvoltageBat = ina219_Bat.getShuntVoltage_mV();
   busvoltageBat = ina219_Bat.getBusVoltage_V();
   currentBat = ina219_Bat.getCurrent_mA();
   powerBat = ina219_Bat.getPower_mW();
   loadvoltageBat = busvoltageBat + (shuntvoltageBat / 1000);
 
+  /*
   shuntvoltageDis = ina219_Dis.getShuntVoltage_mV();
   busvoltageDis = ina219_Dis.getBusVoltage_V();
   currentDis = ina219_Dis.getCurrent_mA();
   powerDis = ina219_Dis.getPower_mW();
   loadvoltageDis = busvoltageDis + (shuntvoltageDis / 1000);
 
+  
   shuntvoltageRasp = ina219_Rasp.getShuntVoltage_mV();
   busvoltageRasp = ina219_Rasp.getBusVoltage_V();
   currentRasp = ina219_Rasp.getCurrent_mA();
   powerRasp = ina219_Rasp.getPower_mW();
   loadvoltageRasp = busvoltageRasp + (shuntvoltageRasp / 1000);
+  
 
   shuntvoltage5V = ina219_5V.getShuntVoltage_mV();
   busvoltage5V = ina219_5V.getBusVoltage_V();
@@ -105,27 +120,37 @@ void loop() {
   Serial.print("Humidity: ");
   Serial.print(humidity.relative_humidity);
   Serial.println("% rH");
+  Serial.println();
 
-  Serial.print("Voltage battery: ");
+  if (humidity.relative_humidity > 80) {
+    digitalWrite(fan, HIGH);
+    //digitalWrite(relay, HIGH);
+  } else {
+    digitalWrite(fan, LOW);
+    //digitalWrite(relay, LOW);
+  }
+  */
+
+  Serial.println("Always ON Bus (ProMini & Fan): ");
   Serial.print(loadvoltageBat);
   Serial.println(" V");
-  Serial.print("Current battery: ");
   Serial.print(currentBat);
   Serial.println(" mA");
-  Serial.print("Power battery: ");
   Serial.print(powerBat);
   Serial.println(" mW");
+  Serial.println();
 
-  Serial.print("Voltage display: ");
+  /*
+  Serial.println("12V Bus (display): ");
   Serial.print(loadvoltageDis);
   Serial.println(" V");
-  Serial.print("Current display: ");
   Serial.print(currentDis);
   Serial.println(" mA");
-  Serial.print("Power display: ");
   Serial.print(powerDis);
   Serial.println(" mW");
+  Serial.println();
 
+  
   Serial.print("Voltage raspberry: ");
   Serial.print(loadvoltageRasp);
   Serial.println(" V");
@@ -135,22 +160,45 @@ void loop() {
   Serial.print("Power display: ");
   Serial.print(powerRasp);
   Serial.println(" mW");
+  
 
-  Serial.print("Voltage 5V bus: ");
+  Serial.println("5V Bus (USB sockets): ");
   Serial.print(loadvoltage5V);
   Serial.println(" V");
-  Serial.print("Current 5V bus: ");
   Serial.print(current5V);
   Serial.println(" mA");
-  Serial.print("Power 5V bus: ");
   Serial.print(power5V);
   Serial.println(" mW");
-
-  Serial.print("Analog Charging: ");
-  Serial.println(chargeStatePin);
-
   Serial.println();
+  */
+
+  totalPower = powerBat + powerDis + power5V;
+  Serial.print("Total Power: ");
+  Serial.print(totalPower);
+  Serial.println(" mW");
   Serial.println();
 
-  delay(2000);
+
+  /*chargeState = analogRead(chargeStatePin);
+  Serial.print("Battery Status: ");
+  if (chargeState > 100) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.print("Charging || ");
+    Serial.println(chargeState);
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.print("Used || ");
+    Serial.println(chargeState);
+  }
+  */
+
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(500);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(500);
+
+
+  Serial.println("|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||");
+
+  //delay(1000);
 }
